@@ -1,8 +1,15 @@
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-load_dotenv()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN not set in environment variables")
+class Settings(BaseSettings):
+    bot_token: str
+    webhook_url: str = "https://your-domain.com/webhook"
+    webhook_path: str = "/webhook"
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )

@@ -1,15 +1,20 @@
 import logging
-from aiogram import Bot, Dispatcher, types
+
+from aiogram import Bot, Dispatcher
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
-from aiogram.enums import ParseMode
+from fastapi import FastAPI, Request
+import uvicorn
 
-from config import BOT_TOKEN
+from config import Settings
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=BOT_TOKEN)
+settings = Settings()
+bot = Bot(token=settings.bot_token)
 dp = Dispatcher()
+
+app = FastAPI()
 
 COMMAND = "отправь мне"
 
@@ -32,7 +37,6 @@ quote_command = QuoteCommandFilter()
 @dp.message(quote_command)
 async def handle_quote_command(message: Message):
     """Обрабатывает цитированные сообщения с командой 'отправь мне'."""
-    # Проверяем, есть ли цитируемое сообщение
     if not message.reply_to_message:
         return
 
@@ -40,15 +44,14 @@ async def handle_quote_command(message: Message):
     user = message.from_user
 
     try:
-        # Отправляем цитируемое сообщение в личные сообщения
         await bot.copy_message(
             chat_id=user.id,
             from_chat_id=quoted_message.chat.id,
             message_id=quoted_message.message_id,
         )
         logging.info(
-            f"Sent message {quoted_message.message_id} from chat {quoted_message.chat.id} "
-            f"to user {user.id}"
+            f"Sent message {quoted_message.message_id} from chat "
+            f"{quoted_message.chat.id} to user {user.id}"
         )
     except Exception as e:
         logging.error(f"Failed to send quoted message: {e}")
@@ -58,13 +61,30 @@ async def handle_quote_command(message: Message):
         )
 
 
-async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+@app.on_event("startup")
+async def on_startup():
+    await bot.set_webhook(url=settings.webhook_url)
+    logging.info(f"Webhook set to {settings.webhook_url}")
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await bot.delete_webhook()
+    logging.info("Webhook deleted")
+
+
+@app.post(settings.webhook_path)
+async def webhook_endpoint(request: Request):
+    """Обработчик вебхука от Telegram."""
+    update = await request.json()
+    await dp.feed_webhook_update(bot, update, msgpack=False)
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        logging.info("Bot stopped")
+    uvicorn.run(
+        app,
+        host=settings.host,
+        port=settings.port,
+        log_level="info",
+    )
