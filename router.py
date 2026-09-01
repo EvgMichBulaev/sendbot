@@ -1,29 +1,32 @@
-from aiogram import Router
-from aiogram.types import Message
-from aiogram import Bot
+from aiogram import Router, F, Bot
+from aiogram.types import Message, CallbackQuery
+from aiogram.enums import ContentType
 
-from handlers import quote_command
+from handlers import quote_command, handle_quote_command, handle_files_command, handle_file_callback, handle_file_message
+from dao.model import File
 
 router = Router()
 
+router.message.register(handle_quote_command, quote_command)
+router.message.register(handle_files_command, F.text == "/files")
 
-@router.message(quote_command)
-async def handle_quote_command(message: Message, bot: Bot):
-    """Обрабатывает цитированные сообщения с командой 'отправь мне'."""
-    if not message.reply_to_message:
-        return
 
-    quoted_message = message.reply_to_message
-    user = message.from_user
+@router.message(F.content_type.in_({ContentType.DOCUMENT, ContentType.PHOTO, ContentType.VIDEO, ContentType.AUDIO}))
+async def handle_file(message: Message, bot: Bot):
+    """Обрабатывает сообщения с файлами и сохраняет их в БД."""
+    content_type = message.content_type
 
-    try:
-        await bot.copy_message(
-            chat_id=user.id,
-            from_chat_id=quoted_message.chat.id,
-            message_id=quoted_message.message_id,
-        )
-    except Exception as e:
-        await message.answer(
-            "❌ Не удалось отправить сообщение. "
-            "Убедитесь, что бот может читать сообщения в этом чате."
-        )
+    if content_type == ContentType.DOCUMENT:
+        await handle_file_message(message, "document")
+    elif content_type == ContentType.PHOTO:
+        await handle_file_message(message, "photo")
+    elif content_type == ContentType.VIDEO:
+        await handle_file_message(message, "video")
+    elif content_type == ContentType.AUDIO:
+        await handle_file_message(message, "audio")
+
+
+@router.callback_query(F.data.startswith("file_"))
+async def handle_file_callback_wrapper(callback: CallbackQuery, bot: Bot):
+    """Обёртка для обработки callback от кнопок файлов."""
+    await handle_file_callback(callback, callback.data, bot)

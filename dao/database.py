@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import List, Optional
 from config import database_url
-from sqlalchemy import func, TIMESTAMP, Integer
+from sqlalchemy import func, TIMESTAMP, Integer, select
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
 
@@ -20,3 +21,57 @@ class Base(AsyncAttrs, DeclarativeBase):
     @property
     def __tablename__(cls) -> str:
         return cls.__name__.lower() + 's'
+
+
+async def save_file(
+    chat_id: int,
+    message_id: int,
+    user_id: int,
+    file_type: str,
+    file_name: Optional[str],
+    caption: Optional[str],
+    original_chat_id: int,
+    original_message_id: int,
+) -> "File":
+    """Сохраняет метаданные файла в БД."""
+    from dao.model import File
+    
+    async with async_session_maker() as session:
+        file_record = File(
+            chat_id=chat_id,
+            message_id=message_id,
+            user_id=user_id,
+            file_type=file_type,
+            file_name=file_name,
+            caption=caption,
+            original_chat_id=original_chat_id,
+            original_message_id=original_message_id,
+        )
+        session.add(file_record)
+        await session.commit()
+        await session.refresh(file_record)
+        return file_record
+
+
+async def get_user_files(user_id: int) -> List["File"]:
+    """Получает все файлы, сохранённые пользователем."""
+    from dao.model import File
+    
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(File)
+            .where(File.user_id == user_id)
+            .order_by(File.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+
+async def delete_file(file_id: int, user_id: int) -> bool:
+    """Удаляет файл из БД."""
+    async with async_session_maker() as session:
+        file_record = await session.get(File, file_id)
+        if file_record and file_record.user_id == user_id:
+            await session.delete(file_record)
+            await session.commit()
+            return True
+        return False
