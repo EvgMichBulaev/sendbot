@@ -2,8 +2,13 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.enums import ContentType
 
-from handlers import quote_command, handle_quote_command, handle_files_command, handle_file_callback, handle_file_message
-from dao.model import File
+from users.handlers import (
+    quote_command,
+    handle_quote_command,
+    handle_files_command,
+    handle_file_callback,
+    handle_file_message,
+)
 
 router = Router()
 
