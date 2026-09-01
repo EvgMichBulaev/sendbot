@@ -33,7 +33,7 @@ docker compose up -d
 
 Параметры подключения:
 - **User:** tlg
-- **Password:** tdutybq1
+- **Password:** tlg
 - **Database:** bot_db
 - **Port:** 5430
 
@@ -50,7 +50,7 @@ cp .env.example .env
 BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 
 # URL базы данных (asyncpg для SQLAlchemy async)
-DB_URL=postgresql+asyncpg://tlg:tdutybq1@localhost:5430/bot_db
+DB_URL=postgresql+asyncpg://tlg:tlg@localhost:5430/bot_db
 
 # ADMINS — ID администраторов бота (через запятую)
 ADMINS=[123456789]
