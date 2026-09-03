@@ -6,7 +6,7 @@ from aiogram.filters import BaseFilter
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
-from dao.database import save_file, get_user_files, delete_file, async_session_maker
+from dao.database import save_file, get_user_files, get_all_files, delete_file, delete_expired_files, async_session_maker
 from dao.model import File
 
 COMMAND_TEXT = "отправь мне"
@@ -72,6 +72,7 @@ async def handle_file_message(message: Message, file_type: str):
     """Общий обработчик для сообщений с файлами."""
     file_name = None
     caption = None
+    message_text = message.text  # сохраняем текст сообщения
 
     if file_type == "document" and message.document:
         file_name = message.document.file_name
@@ -88,6 +89,10 @@ async def handle_file_message(message: Message, file_type: str):
         file_name = message.audio.file_name
         caption = message.caption
 
+    # Если текста нет, но есть caption — используем его как описание
+    if not message_text and caption:
+        message_text = caption
+
     await save_file(
         chat_id=message.chat.id,
         message_id=message.message_id,
@@ -95,6 +100,7 @@ async def handle_file_message(message: Message, file_type: str):
         file_type=file_type,
         file_name=file_name,
         caption=caption,
+        message_text=message_text,
         original_chat_id=message.chat.id,
         original_message_id=message.message_id,
     )
@@ -111,24 +117,31 @@ async def handle_file_message(message: Message, file_type: str):
 
 
 async def handle_files_command(message: Message):
-    """Обработчик команды /files — показывает список файлов пользователя."""
-    user_files = await get_user_files(message.from_user.id)
+    """Обработчик команды /files — показывает все активные сохранённые файлы."""
+    from datetime import datetime
+    
+    all_files = await get_all_files()
+    
+    # Фильтруем только активные файлы (не истекшие)
+    active_files = [f for f in all_files if f.expires_at is None or f.expires_at > datetime.utcnow()]
 
-    if not user_files:
-        await message.answer("У вас пока нет сохранённых файлов.")
+    if not active_files:
+        await message.answer("В базе пока нет доступных файлов.")
         return
 
     builder = InlineKeyboardBuilder()
 
-    for file_record in user_files:
+    for file_record in active_files:
         emoji = FILE_TYPE_EMOJI.get(file_record.file_type, "📎")
-        display_name = file_record.file_name or f"{file_record.file_type} ({file_record.file_size if hasattr(file_record, 'file_size') else 'unknown'})"
+        display_name = file_record.file_name or file_record.file_type
         
         # Ограничиваем длину имени файла
-        if len(display_name) > 30:
-            display_name = display_name[:27] + "..."
-
-        button_text = f"{emoji} {display_name}"
+        if len(display_name) > 25:
+            display_name = display_name[:22] + "..."
+        
+        # Показываем, кто отправил файл
+        author = f"@{file_record.user_id}"
+        button_text = f"{emoji} {display_name} ({author})"
         builder.button(
             text=button_text,
             callback_data=f"file_{file_record.id}",
@@ -136,25 +149,53 @@ async def handle_files_command(message: Message):
 
     builder.adjust(1)
 
+    # Формируем описание с текстами файлов
+    descriptions = []
+    for file_record in active_files:
+        # Используем message_text, если он есть, иначе показываем информацию о файле
+        if file_record.message_text:
+            description = file_record.message_text
+        elif file_record.file_name:
+            description = file_record.file_name
+        else:
+            description = FILE_TYPE_EMOJI.get(file_record.file_type, '📎') + " " + file_record.file_type.capitalize()
+        
+        # Ограничиваем длину описания
+        if len(description) > 100:
+            description = description[:97] + "..."
+        descriptions.append(f"{FILE_TYPE_EMOJI.get(file_record.file_type, '📎')} {description}")
+    
+    description_text = "\n\n".join(descriptions[:5])  # показываем первые 5 описаний
+    if len(active_files) > 5:
+        description_text += f"\n\n...и ещё {len(active_files) - 5} файлов"
+
     await message.answer(
-        "📁 Ваши сохранённые файлы:\n\n"
-        "Нажмите на файл, чтобы получить его.",
+        "📁 Все сохранённые файлы:\n\n"
+        "Нажмите на файл, чтобы получить его.\n\n"
+        f"📝 Описания:\n{description_text}",
         reply_markup=builder.as_markup(),
     )
 
 
 async def handle_file_callback(callback: types.CallbackQuery, data: str, bot: Bot):
     """Обработчик нажатия на файл — пересылает файл пользователю."""
+    from datetime import datetime
+    
     file_id = int(data.replace("file_", ""))
     user_id = callback.from_user.id
 
     # Получаем файл из БД
     async with async_session_maker() as session:
-        result = await session.execute(select(File).where(File.id == file_id, File.user_id == user_id))
+        result = await session.execute(select(File).where(File.id == file_id))
         file_record = result.scalar_one_or_none()
 
     if not file_record:
-        await callback.answer("Файл не найден или у вас нет к нему доступа.")
+        await callback.answer("Файл не найден.")
+        return
+
+    # Проверяем, не истёк ли срок файла
+    if file_record.expires_at and file_record.expires_at < datetime.utcnow():
+        await callback.answer("Срок действия файла истёк.")
         return
 
     try:
@@ -168,5 +209,4 @@ async def handle_file_callback(callback: types.CallbackQuery, data: str, bot: Bo
         logging.error(f"Error sending file {file_id}: {e}")
         await callback.answer("Не удалось отправить файл.")
 
-    # Удаляем файл из БД после отправки
-    await delete_file(file_id, user_id)
+    # Файл НЕ удаляем — он будет удалён автоматически через 24 часа после отправки

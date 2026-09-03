@@ -30,11 +30,17 @@ async def save_file(
     file_type: str,
     file_name: Optional[str],
     caption: Optional[str],
+    message_text: Optional[str],
     original_chat_id: int,
     original_message_id: int,
+    expires_at: Optional[datetime] = None,
 ) -> "File":
     """Сохраняет метаданные файла в БД."""
     from dao.model import File
+    
+    if expires_at is None:
+        from datetime import timedelta
+        expires_at = datetime.utcnow() + timedelta(hours=24)
     
     async with async_session_maker() as session:
         file_record = File(
@@ -44,8 +50,10 @@ async def save_file(
             file_type=file_type,
             file_name=file_name,
             caption=caption,
+            message_text=message_text,
             original_chat_id=original_chat_id,
             original_message_id=original_message_id,
+            expires_at=expires_at,
         )
         session.add(file_record)
         await session.commit()
@@ -66,12 +74,44 @@ async def get_user_files(user_id: int) -> List["File"]:
         return list(result.scalars().all())
 
 
-async def delete_file(file_id: int, user_id: int) -> bool:
+async def get_all_files() -> List["File"]:
+    """Получает все файлы в базе данных."""
+    from dao.model import File
+    
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(File)
+            .order_by(File.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+
+async def delete_file(file_id: int) -> bool:
     """Удаляет файл из БД."""
+    from dao.model import File
+    
     async with async_session_maker() as session:
         file_record = await session.get(File, file_id)
-        if file_record and file_record.user_id == user_id:
+        if file_record:
             await session.delete(file_record)
             await session.commit()
             return True
         return False
+
+
+async def delete_expired_files() -> int:
+    """Удаляет все просроченные файлы. Возвращает количество удалённых."""
+    from dao.model import File
+    
+    deleted_count = 0
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(File).where(File.expires_at < datetime.utcnow())
+        )
+        expired_files = list(result.scalars().all())
+        for file_record in expired_files:
+            await session.delete(file_record)
+            deleted_count += 1
+        if deleted_count > 0:
+            await session.commit()
+    return deleted_count

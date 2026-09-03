@@ -14,5 +14,7 @@ class File(Base):
     file_type: Mapped[str] = mapped_column(String(20), nullable=False)  # document, photo, video, audio
     file_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     caption: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    message_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # текст сообщения с файлом
     original_chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     original_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # время истечения файла
