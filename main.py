@@ -1,6 +1,5 @@
 import logging
 
-from aiogram import Bot, Dispatcher
 from fastapi import FastAPI, Request
 import uvicorn
 

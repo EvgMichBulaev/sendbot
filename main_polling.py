@@ -1,10 +1,10 @@
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher
+from aiogram import Bot
 from aiogram.types import BotCommand, BotCommandScopeDefault
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import bot, dp, admins
-from router import router
+from users.router import router
 from utlite.cleanup import cleanup_expired_files
 
 logging.basicConfig(level=logging.INFO)

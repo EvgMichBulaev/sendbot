@@ -15,9 +15,10 @@ class Settings(BaseSettings):
     DB_URL: str
     WEBHOOK_PATH: str
     WEBHOOK_URL: str
-    PORT: int
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+        env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "./.env")
     )
 
 settings = Settings()
@@ -27,3 +28,4 @@ bot = Bot(token=settings.BOT_TOKEN,
 dp = Dispatcher(storage=MemoryStorage())
 admins = settings.ADMINS
 database_url = settings.DB_URL
+all_media_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configure')

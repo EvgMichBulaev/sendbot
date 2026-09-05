@@ -1,5 +1,9 @@
+import logging
+import os
+
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart, CommandObject
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.enums import ContentType
 
 from users.handlers import (
@@ -9,12 +13,22 @@ from users.handlers import (
     handle_file_callback,
     handle_file_message,
 )
+from users.message import hello
+from config import all_media_dir
 
 router = Router()
 
 router.message.register(handle_quote_command, quote_command)
 router.message.register(handle_files_command, F.text == "/files")
 
+@router.message(CommandStart())
+async def start(message: Message, command: CommandObject):
+    user_id = message.from_user.id
+    lang = message.from_user.language_code
+    logging.info(f"Пользователь {user_id} использует язык: {lang}")
+    image = FSInputFile(path=os.path.join(all_media_dir, 'hello.jpeg'))
+
+    await message.answer_photo(photo=image, caption=hello)
 
 @router.message(F.content_type.in_({ContentType.DOCUMENT, ContentType.PHOTO, ContentType.VIDEO, ContentType.AUDIO}))
 async def handle_file(message: Message, bot: Bot):
