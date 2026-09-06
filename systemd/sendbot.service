@@ -9,7 +9,7 @@ User={YOUR_USER}
 Group={YOUR_USER}
 WorkingDirectory=/srv/sendbot
 Environment="PATH=/srv/sendbot/venv/bin"
-EnvironmentFile=/srv/sendbot/.env.production
+EnvironmentFile=/srv/sendbot/.env
 ExecStart=/srv/sendbot/venv/bin/python main.py
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
