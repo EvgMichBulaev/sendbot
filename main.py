@@ -162,7 +162,7 @@ if __name__ == "__main__":
     """
     logging.info(f"Запуск FastAPI сервера на порту {settings.PORT}...")
     uvicorn.run(
-        "bot.main_fastapi:app",
+        "main:app",
         host="0.0.0.0",
         port=settings.PORT,
         reload=True,
