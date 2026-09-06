@@ -26,24 +26,31 @@ class Settings(BaseSettings):
 
     @field_validator("ADMINS", mode="before")
     @classmethod
-    def parse_admins(cls, value: Union[str, List[int]]) -> List[int]:
-        """Parse ADMINS from comma-separated string or JSON array."""
+    def parse_admins(cls, value: Union[str, List[int], int]) -> List[int]:
+        """Parse ADMINS from comma-separated string, JSON array, or single int."""
         if isinstance(value, list):
-            return value
-        if not value or not value.strip():
+            return [int(x) for x in value]
+        if isinstance(value, int):
+            return [value]
+        if not value or not str(value).strip():
             raise ValueError("ADMINS cannot be empty")
+        value = str(value).strip()
         # Try JSON array first (e.g., "[123, 456]")
-        value = value.strip()
         if value.startswith("["):
             try:
-                return json.loads(value)
-            except json.JSONDecodeError as e:
+                return [int(x) for x in json.loads(value)]
+            except (json.JSONDecodeError, TypeError) as e:
                 raise ValueError(f"Invalid JSON in ADMINS: {e}")
         # Fallback: comma-separated integers (e.g., "123, 456")
         try:
-            return [int(x.strip()) for x in value.split(",") if x.strip()]
+            result = [int(x.strip()) for x in value.split(",") if x.strip()]
+            if not result:
+                raise ValueError("ADMINS cannot be empty")
+            return result
         except ValueError as e:
-            raise ValueError(f"Invalid integer in ADMINS: {e}")
+            if "invalid literal" in str(e):
+                raise ValueError(f"Invalid integer in ADMINS: {e}")
+            raise
 
 settings = Settings()
 
