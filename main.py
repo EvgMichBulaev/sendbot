@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 import uvicorn
 
 from config import bot, dp, settings
-from handlers import handle_quote_command, quote_command
+from users.handlers import handle_quote_command, quote_command
 
 logging.basicConfig(level=logging.INFO)
 

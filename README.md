@@ -154,6 +154,54 @@ python main_polling.py
 | created_at         | TIMESTAMP | Время создания записи             |
 | updated_at         | TIMESTAMP | Время обновления записи           |
 
+## Развёртывание на VPS (вебхук)
+
+Для развёртывания на VPS используется автоматизированный скрипт `deploy.sh`:
+
+### Требования
+- Чистый Ubuntu/Debian сервер
+- Домен `{YOUR_DOMAIN}` указывает на IP сервера (A record)
+- Порты 80 и 443 открыты
+- Пользователь с sudo правами
+
+### Запуск
+
+```bash
+# Скопируйте скрипт на сервер
+sudo scp deploy.sh user@vm.ebul.online:/tmp/
+
+# Запустите на сервере
+sudo bash /tmp/deploy.sh
+```
+
+Скрипт автоматически:
+1. Установит все зависимости (nginx, docker, python3, certbot)
+2. Развернёт PostgreSQL через Docker Compose
+3. Клонирует репозиторий в `/srv/sendbot`
+4. Создаст виртуальное окружение и установит зависимости
+5. Применит миграции Alembic
+6. Настроит Nginx как reverse proxy
+7. Получит SSL-сертификат через Let's Encrypt
+8. Запустит бота через systemd
+
+После запуска не забудьте отредактировать `/srv/sendbot/.env.production` и указать `BOT_TOKEN` и `ADMINS`.
+
+### Полезные команды
+
+```bash
+# Просмотр логов бота
+journalctl -u sendbot -f
+
+# Перезапуск бота
+systemctl restart sendbot
+
+# Просмотр логов PostgreSQL
+docker logs postgres_container -f
+
+# Тест Nginx
+nginx -t
+```
+
 ## Требования
 
 - Python 3.10+

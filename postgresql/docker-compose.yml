@@ -4,8 +4,8 @@ services:
     container_name: postgres_container
     restart: unless-stopped
     environment:
-      POSTGRES_USER: tlg
-      POSTGRES_PASSWORD: tlg
+      POSTGRES_USER: {YOUR_USER}
+      POSTGRES_PASSWORD: {YOUR_PASSWORD}
       POSTGRES_DB: bot_db
     ports:
       - "5430:5432"

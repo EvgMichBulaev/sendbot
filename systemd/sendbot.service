@@ -1,0 +1,27 @@
+[Unit]
+Description=Sendbot Telegram Bot
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User={YOUR_USER}
+Group={YOUR_USER}
+WorkingDirectory=/srv/sendbot
+Environment="PATH=/srv/sendbot/venv/bin"
+EnvironmentFile=/srv/sendbot/.env.production
+ExecStart=/srv/sendbot/venv/bin/python main.py
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sendbot
+LimitNOFILE=65536
+
+# Безопасность
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
