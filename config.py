@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "./.env")
+        env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     )
 
 settings = Settings()
