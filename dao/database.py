@@ -115,3 +115,21 @@ async def delete_expired_files() -> int:
         if deleted_count > 0:
             await session.commit()
     return deleted_count
+
+
+async def delete_user_files(user_id: int) -> int:
+    """Удаляет все файлы пользователя. Возвращает количество удалённых."""
+    from dao.model import File
+    
+    deleted_count = 0
+    async with async_session_maker() as session:
+        result = await session.execute(
+            select(File).where(File.user_id == user_id)
+        )
+        user_files = list(result.scalars().all())
+        for file_record in user_files:
+            await session.delete(file_record)
+            deleted_count += 1
+        if deleted_count > 0:
+            await session.commit()
+    return deleted_count

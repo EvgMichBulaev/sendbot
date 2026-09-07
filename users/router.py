@@ -12,6 +12,7 @@ from users.handlers import (
     handle_files_command,
     handle_file_callback,
     handle_file_message,
+    handle_clear_command,
 )
 from users.message import hello
 from config import all_media_dir
@@ -20,6 +21,7 @@ router = Router()
 
 router.message.register(handle_quote_command, quote_command)
 router.message.register(handle_files_command, F.text == "/files")
+router.message.register(handle_clear_command, F.text == "/clear")
 
 @router.message(CommandStart())
 async def start(message: Message, command: CommandObject):

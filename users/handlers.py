@@ -6,7 +6,7 @@ from aiogram.filters import BaseFilter
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
-from dao.database import save_file, get_user_files, get_all_files, delete_file, delete_expired_files, async_session_maker
+from dao.database import save_file, get_user_files, get_all_files, delete_file, delete_expired_files, delete_user_files, async_session_maker
 from dao.model import File
 
 COMMAND_TEXT = "отправь мне"
@@ -210,3 +210,15 @@ async def handle_file_callback(callback: types.CallbackQuery, data: str, bot: Bo
         await callback.answer("Не удалось отправить файл.")
 
     # Файл НЕ удаляем — он будет удалён автоматически через 24 часа после отправки
+
+
+async def handle_clear_command(message: Message):
+    """Обработчик команды /clear — удаляет все файлы пользователя."""
+    user_id = message.from_user.id
+    
+    deleted_count = await delete_user_files(user_id)
+    
+    if deleted_count > 0:
+        await message.answer(f"🗑️ Удалено {deleted_count} файл(ов).")
+    else:
+        await message.answer("У вас нет сохранённых файлов.")

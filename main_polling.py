@@ -13,6 +13,7 @@ dp.include_router(router)
 
 async def set_commands():
     commands = [BotCommand(command='files', description='Список файлов для загрузки'),
+                BotCommand(command='clear', description='Удаление своих файлов из списка'),
                 ]
     await bot.set_my_commands(commands, BotCommandScopeDefault())
 
